@@ -8,6 +8,7 @@ import quarano.department.TrackedCase;
 import quarano.department.TrackedCase.Status;
 
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.springframework.context.support.MessageSourceAccessor;
 import org.springframework.hateoas.Link;
@@ -61,6 +62,14 @@ public class TrackedCaseStatusAware<T extends RepresentationModel<T>> extends Re
 
 			links = links.and(Link.of(href, TrackedCaseLinkRelations.QUESTIONNAIRE));
 		}
+
+		links = links.and(trackedCase.getOriginCases().stream()
+				.map(it -> {
+
+					var href = fromMethodCall(controller.getCase(it.getId(), it.getDepartment())).toUriString();
+					return Link.of(href, TrackedCaseLinkRelations.ORIGIN_CASES);
+
+				}).collect(Collectors.toUnmodifiableList()));
 
 		return links;
 	}
