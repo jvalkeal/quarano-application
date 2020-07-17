@@ -2,6 +2,7 @@ package quarano.actions.web;
 
 import static org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder.*;
 
+import lombok.Getter;
 import quarano.actions.ActionItem;
 import quarano.actions.ActionItem.ItemType;
 import quarano.actions.ActionItems;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.lang.Nullable;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
@@ -26,7 +28,7 @@ class CaseActionSummary {
 
 	private final ActionItems items;
 	private final TrackedCaseSummary summary;
-	private final TrackedCase trackedCase;
+	private final @Getter(onMethod = @__(@JsonIgnore)) TrackedCase trackedCase;
 
 	CaseActionSummary(TrackedCase trackedCase, ActionItems items, TrackedCaseSummary summary) {
 

@@ -12,13 +12,16 @@ import quarano.department.TrackedCase;
 import quarano.department.TrackedCase.TrackedCaseIdentifier;
 import quarano.department.TrackedCaseRepository;
 import quarano.department.web.ExternalTrackedCaseRepresentations;
+import quarano.department.web.TrackedCaseLinkRelations;
 
-import java.util.Comparator;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.validation.Valid;
 
 import org.springframework.context.support.MessageSourceAccessor;
+import org.springframework.hateoas.RepresentationModel;
+import org.springframework.hateoas.mediatype.hal.HalModelBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
@@ -81,19 +84,56 @@ public class ActionItemController {
 		return allActions(identifier, department);
 	}
 
+	// @GetMapping("/api/hd/actions")
+	// Stream<?> getActions(@LoggedIn Department department) {
+	//
+	// return cases.findByDepartmentId(department.getId())
+	// .map(trackedCase -> {
+	//
+	// var summary = trackedCaseRepresentations.toSummary(trackedCase);
+	//
+	// return new CaseActionSummary(trackedCase, items.findUnresolvedByActiveCase(trackedCase), summary);
+	//
+	// })
+	// .stream()
+	// .filter(CaseActionSummary::hasUnresolvedItems)
+	// .sorted(Comparator.comparing(CaseActionSummary::getPriority).reversed());
+	// }
+
 	@GetMapping("/api/hd/actions")
-	Stream<?> getActions(@LoggedIn Department department) {
+	Stream<RepresentationModel<?>> getActions(@LoggedIn Department department) {
 
-		return cases.findByDepartmentId(department.getId())
-				.map(trackedCase -> {
-
-					var summary = trackedCaseRepresentations.toSummary(trackedCase);
-
-					return new CaseActionSummary(trackedCase, items.findUnresolvedByActiveCase(trackedCase), summary);
-
-				})
+		var actions = cases.findByDepartmentId(department.getId())
+				.map(this::toSummary)
 				.stream()
-				.filter(CaseActionSummary::hasUnresolvedItems)
-				.sorted(Comparator.comparing(CaseActionSummary::getPriority).reversed());
+				// .filter(CaseActionSummary::hasUnresolvedItems)
+				// .sorted(Comparator.comparing(CaseActionSummary::getPriority).reversed())
+				.collect(Collectors.toUnmodifiableList());
+
+		return actions.stream().map(this::toSummaryRepresentation);
+		// return HalModelBuilder.emptyHalModel()
+		// .embed(actions, CaseActionSummary.class)
+		// .build();
+	}
+
+	public CaseActionSummary toSummary(TrackedCase trackedCase) {
+		var summary = trackedCaseRepresentations.toSummary(trackedCase);
+		return new CaseActionSummary(trackedCase, items.findUnresolvedByActiveCase(trackedCase), summary);
+	}
+
+	public RepresentationModel<?> toSummaryRepresentation(CaseActionSummary caseActionSummary) {
+
+		var halModelBuilder = HalModelBuilder.halModelOf(caseActionSummary);
+		var originCases = caseActionSummary.getTrackedCase()
+				.getOriginCases()
+				.stream()
+				.map(trackedCaseRepresentations::toSelect)
+				.collect(Collectors.toUnmodifiableList());
+
+		if (!originCases.isEmpty()) {
+			halModelBuilder.embed(originCases, TrackedCaseLinkRelations.ORIGIN_CASES);
+		}
+
+		return halModelBuilder.build();
 	}
 }
